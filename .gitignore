@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+Spotlite.app/
+Package.resolved
+.DS_Store
+*.xcodeproj/
+xcuserdata/
+*.xcuserdatad/
