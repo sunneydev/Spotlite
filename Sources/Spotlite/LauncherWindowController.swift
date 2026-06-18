@@ -113,7 +113,7 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
         let placeholder = BorderlessTextField()
         placeholder.font = inputFont
         placeholder.textColor = .tertiaryLabelColor
-        placeholder.stringValue = "Search Applications"
+        placeholder.stringValue = "Search"
         placeholder.isEditable = false
         placeholder.isSelectable = false
         placeholder.isBordered = false
@@ -380,10 +380,15 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
 
     private func launchSelected() {
         guard results.indices.contains(selected) else { return }
-        let app = results[selected]
-        let cfg = NSWorkspace.OpenConfiguration()
-        cfg.activates = true
-        NSWorkspace.shared.openApplication(at: app.url, configuration: cfg) { _, _ in }
+        let entry = results[selected]
+        switch entry.kind {
+        case .app:
+            let cfg = NSWorkspace.OpenConfiguration()
+            cfg.activates = true
+            NSWorkspace.shared.openApplication(at: entry.url, configuration: cfg) { _, _ in }
+        case .settings:
+            NSWorkspace.shared.open(entry.url)
+        }
         hide()
     }
 
