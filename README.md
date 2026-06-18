@@ -17,7 +17,13 @@
 
 1. Download [`Spotlite.dmg`](Spotlite.dmg) and open it
 2. Drag **Spotlite** onto the **Applications** folder
-3. **Right-click → Open** the first time (signed, not yet notarized)
+3. **Right-click → Open** the first time (ad-hoc signed, not notarized)
+
+If macOS still says the app is *damaged*, clear the download quarantine:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Spotlite.app
+```
 
 Spotlite launches at login automatically — toggle it off any time from the menu bar icon.
 
