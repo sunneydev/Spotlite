@@ -16,6 +16,10 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
     private let maxRows: Int = 6
     private let panelWidth: CGFloat = 700
     private let inputHeight: CGFloat = 68
+    /// Transparent breathing room around the glass inside the window, so the
+    /// drop shadow has space to render instead of being clipped by the window
+    /// frame (which made it look like a hard rectangle).
+    private let shadowMargin: CGFloat = 48
     private let stackInsetV: CGFloat = 8
     private var collapsedHeight: CGFloat { inputHeight }
     private var expandedHeight: CGFloat {
@@ -30,8 +34,6 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
     private var dividerView: NSBox!
     private var placeholderLabel: NSTextField!
     private var glassHeightConstraint: NSLayoutConstraint!
-    private let glassView: NSGlassEffectView
-    private let cornerRadius: CGFloat = 30
 
     init(scanner: AppScanner) {
         self.scanner = scanner
@@ -61,7 +63,15 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
         glass.cornerRadius = 30
         glass.translatesAutoresizingMaskIntoConstraints = false
         glass.wantsLayer = true
-        self.glassView = glass
+
+        // Soft rounded drop shadow. NSGlassEffectView's auto-shadow already
+        // follows the rounded corners — the bug was the window clipping it into
+        // a square. shadowMargin gives it room; these values keep it subtle.
+        glass.shadow = NSShadow()
+        glass.layer?.shadowColor = NSColor.black.cgColor
+        glass.layer?.shadowOpacity = 0.28
+        glass.layer?.shadowRadius = 26
+        glass.layer?.shadowOffset = CGSize(width: 0, height: -14)
 
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -165,9 +175,9 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
         self.glassHeightConstraint = glassHeight
 
         NSLayoutConstraint.activate([
-            glass.topAnchor.constraint(equalTo: wrapper.topAnchor),
-            glass.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
-            glass.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+            glass.topAnchor.constraint(equalTo: wrapper.topAnchor, constant: shadowMargin),
+            glass.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor, constant: shadowMargin),
+            glass.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor, constant: -shadowMargin),
 
             container.topAnchor.constraint(equalTo: glass.topAnchor),
             container.leadingAnchor.constraint(equalTo: glass.leadingAnchor),
@@ -282,43 +292,19 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
         let screen = NSScreen.main?.visibleFrame ?? .zero
         let expandedY = screen.minY + screen.height * 0.5 - expandedHeight / 2
         anchorTopY = expandedY + expandedHeight
-        let x = screen.midX - panelWidth / 2
+        // Window is inflated by shadowMargin on every side; the glass sits inset
+        // by that margin so its top-left lands at the intended on-screen anchor.
+        let x = screen.midX - panelWidth / 2 - shadowMargin
         panel.setFrame(
-            NSRect(x: x, y: anchorTopY - expandedHeight, width: panelWidth, height: expandedHeight),
+            NSRect(x: x,
+                   y: anchorTopY - expandedHeight - shadowMargin,
+                   width: panelWidth + shadowMargin * 2,
+                   height: expandedHeight + shadowMargin * 2),
             display: false
         )
         // Reset glass to collapsed height without animation.
         glassHeightConstraint.constant = collapsedHeight
         panel.contentView?.layoutSubtreeIfNeeded()
-        updateGlassShadow(height: collapsedHeight, animated: false)
-    }
-
-    /// NSGlassEffectView clips its rounded shape via masksToBounds, so its
-    /// auto-computed drop shadow is cast from the *rectangular* layer bounds —
-    /// a square halo that's invisible in dark mode but ugly in light mode.
-    /// Give the layer an explicit rounded shadowPath that tracks the bounds.
-    private func updateGlassShadow(height: CGFloat, animated: Bool) {
-        guard let layer = glassView.layer else { return }
-        layer.masksToBounds = false
-        layer.shadowColor = NSColor.black.cgColor
-        layer.shadowOpacity = 0.22
-        layer.shadowRadius = 22
-        layer.shadowOffset = CGSize(width: 0, height: -6)
-        // Build from the target height — during the expand animation glassView's
-        // own bounds haven't updated yet, so reading them would lag the shadow.
-        let rect = CGRect(x: 0, y: 0, width: panelWidth, height: height)
-        let path = CGPath(roundedRect: rect,
-                          cornerWidth: cornerRadius, cornerHeight: cornerRadius,
-                          transform: nil)
-        if animated, let old = layer.shadowPath {
-            let anim = CABasicAnimation(keyPath: "shadowPath")
-            anim.fromValue = old
-            anim.toValue = path
-            anim.duration = 0.42
-            anim.timingFunction = CAMediaTimingFunction(controlPoints: 0.22, 1.0, 0.36, 1.0)
-            layer.add(anim, forKey: "shadowPath")
-        }
-        layer.shadowPath = path
     }
 
     // MARK: - NSWindowDelegate
@@ -352,7 +338,6 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
             rowsContainer.alphaValue = expand ? 1 : 0
             dividerView.alphaValue = expand ? 1 : 0
             panel.contentView?.layoutSubtreeIfNeeded()
-            updateGlassShadow(height: targetHeight, animated: false)
             return
         }
 
@@ -365,7 +350,6 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
             dividerView.animator().alphaValue = expand ? 1 : 0
             panel.contentView?.layoutSubtreeIfNeeded()
         }
-        updateGlassShadow(height: targetHeight, animated: true)
     }
 
     // MARK: - Key handling
