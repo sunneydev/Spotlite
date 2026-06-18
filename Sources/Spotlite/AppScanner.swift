@@ -22,13 +22,23 @@ final class AppEntry: Hashable {
         self.icon = icon
     }
 
-    /// A System Settings section, opened via its URL scheme.
-    init(settings name: String, symbol: String, tint: NSColor, urlString: String) {
+    /// A System Settings section, opened via its URL scheme. Uses the real
+    /// macOS section icon from its settings extension when available, else
+    /// falls back to a tinted SF Symbol we render ourselves.
+    init(settings name: String, symbol: String, tint: NSColor, urlString: String, appex: String) {
         self.name = name
         self.lowerName = name.lowercased()
         self.url = URL(string: urlString)!
         self.kind = .settings
-        self.icon = AppEntry.settingsIcon(symbol: symbol, tint: tint)
+
+        let extPath = "/System/Library/ExtensionKit/Extensions/" + appex
+        if !appex.isEmpty, FileManager.default.fileExists(atPath: extPath) {
+            let real = NSWorkspace.shared.icon(forFile: extPath)
+            real.size = NSSize(width: 40, height: 40)
+            self.icon = real
+        } else {
+            self.icon = AppEntry.settingsIcon(symbol: symbol, tint: tint)
+        }
     }
 
     static func == (l: AppEntry, r: AppEntry) -> Bool { l.url == r.url }
@@ -116,41 +126,41 @@ final class AppScanner {
 
     /// Curated System Settings sections (verified to navigate on macOS 26).
     private static func makeSettings() -> [AppEntry] {
-        func s(_ n: String, _ sym: String, _ tint: NSColor, _ id: String) -> AppEntry {
+        func s(_ n: String, _ sym: String, _ tint: NSColor, _ id: String, _ appex: String) -> AppEntry {
             AppEntry(settings: n, symbol: sym, tint: tint,
-                     urlString: "x-apple.systempreferences:\(id)")
+                     urlString: "x-apple.systempreferences:\(id)", appex: appex)
         }
         return [
-            s("Wi-Fi", "wifi", .systemBlue, "com.apple.preference.network"),
-            s("Bluetooth", "antenna.radiowaves.left.and.right", .systemBlue, "com.apple.preferences.Bluetooth"),
-            s("Network", "globe", .systemBlue, "com.apple.preference.network"),
-            s("VPN", "lock.shield.fill", .systemGray, "com.apple.NetworkExtensionSettingsUI.NESettingsUIExtension"),
-            s("Sound", "speaker.wave.2.fill", .systemPink, "com.apple.preference.sound"),
-            s("Displays", "display", .systemBlue, "com.apple.preference.displays"),
-            s("Wallpaper", "photo.fill", .systemTeal, "com.apple.preference.desktopscreeneffect"),
-            s("Appearance", "paintbrush.fill", .systemGray, "com.apple.Appearance-Settings.extension"),
-            s("Keyboard", "keyboard", .systemGray, "com.apple.preference.keyboard"),
-            s("Trackpad", "hand.point.up.left.fill", .systemGray, "com.apple.preference.trackpad"),
-            s("Accessibility", "accessibility", .systemBlue, "com.apple.preference.universalaccess"),
-            s("Battery", "battery.100", .systemGreen, "com.apple.preference.battery"),
-            s("Notifications", "bell.badge.fill", .systemRed, "com.apple.preference.notifications"),
-            s("Focus", "moon.fill", .systemIndigo, "com.apple.Focus-Settings.extension"),
-            s("Privacy & Security", "lock.fill", .systemBlue, "com.apple.preference.security"),
-            s("Lock Screen", "lock.display", .systemGray, "com.apple.Lock-Screen-Settings.extension"),
-            s("Date & Time", "clock.fill", .systemGray, "com.apple.preference.datetime"),
-            s("Language & Region", "character.bubble.fill", .systemGray, "com.apple.Localization-Settings.extension"),
-            s("Software Update", "arrow.down.circle.fill", .systemBlue, "com.apple.preferences.softwareupdate"),
-            s("Users & Groups", "person.2.fill", .systemGray, "com.apple.preferences.users"),
-            s("Apple Account", "person.crop.circle", .systemGray, "com.apple.preferences.AppleIDPrefPane"),
-            s("Desktop & Dock", "dock.rectangle", .systemBlue, "com.apple.preference.dock"),
-            s("Control Center", "switch.2", .systemGray, "com.apple.ControlCenter-Settings.extension"),
-            s("Spotlight", "magnifyingglass", .systemGray, "com.apple.preference.spotlight"),
-            s("Printers & Scanners", "printer.fill", .systemGray, "com.apple.preference.printfax"),
-            s("Sharing", "folder.fill", .systemBlue, "com.apple.preferences.sharing"),
-            s("Time Machine", "clock.arrow.circlepath", .systemGreen, "com.apple.prefs.backup"),
-            s("Screen Time", "hourglass", .systemIndigo, "com.apple.preference.screentime"),
-            s("Game Center", "gamecontroller.fill", .systemGreen, "com.apple.Game-Center-Settings.extension"),
-            s("Apple Intelligence & Siri", "sparkles", .systemPurple, "com.apple.Siri-Settings.extension"),
+            s("Wi-Fi", "wifi", .systemBlue, "com.apple.preference.network", "Wi-Fi.appex"),
+            s("Bluetooth", "antenna.radiowaves.left.and.right", .systemBlue, "com.apple.preferences.Bluetooth", "Bluetooth.appex"),
+            s("Network", "globe", .systemBlue, "com.apple.preference.network", "Network.appex"),
+            s("VPN", "lock.shield.fill", .systemGray, "com.apple.NetworkExtensionSettingsUI.NESettingsUIExtension", "VPN.appex"),
+            s("Sound", "speaker.wave.2.fill", .systemPink, "com.apple.preference.sound", "Sound.appex"),
+            s("Displays", "display", .systemBlue, "com.apple.preference.displays", "DisplaysExt.appex"),
+            s("Wallpaper", "photo.fill", .systemTeal, "com.apple.preference.desktopscreeneffect", "Wallpaper.appex"),
+            s("Appearance", "paintbrush.fill", .systemGray, "com.apple.Appearance-Settings.extension", "Appearance.appex"),
+            s("Keyboard", "keyboard", .systemGray, "com.apple.preference.keyboard", "KeyboardSettings.appex"),
+            s("Trackpad", "hand.point.up.left.fill", .systemGray, "com.apple.preference.trackpad", "TrackpadExtension.appex"),
+            s("Accessibility", "accessibility", .systemBlue, "com.apple.preference.universalaccess", "AccessibilitySettingsExtension.appex"),
+            s("Battery", "battery.100", .systemGreen, "com.apple.preference.battery", ""),
+            s("Notifications", "bell.badge.fill", .systemRed, "com.apple.preference.notifications", "NotificationsSettings.appex"),
+            s("Focus", "moon.fill", .systemIndigo, "com.apple.Focus-Settings.extension", "FocusSettingsExtension.appex"),
+            s("Privacy & Security", "lock.fill", .systemBlue, "com.apple.preference.security", "SecurityPrivacyExtension.appex"),
+            s("Lock Screen", "lock.display", .systemGray, "com.apple.Lock-Screen-Settings.extension", "LockScreen.appex"),
+            s("Date & Time", "clock.fill", .systemGray, "com.apple.preference.datetime", "DateAndTime Extension.appex"),
+            s("Language & Region", "character.bubble.fill", .systemGray, "com.apple.Localization-Settings.extension", "Localization.appex"),
+            s("Software Update", "arrow.down.circle.fill", .systemBlue, "com.apple.preferences.softwareupdate", "SoftwareUpdateSettingsExtension.appex"),
+            s("Users & Groups", "person.2.fill", .systemGray, "com.apple.preferences.users", "UsersGroups.appex"),
+            s("Apple Account", "person.crop.circle", .systemGray, "com.apple.preferences.AppleIDPrefPane", "AppleIDSettings.appex"),
+            s("Desktop & Dock", "dock.rectangle", .systemBlue, "com.apple.preference.dock", "DesktopSettings.appex"),
+            s("Control Center", "switch.2", .systemGray, "com.apple.ControlCenter-Settings.extension", "ControlCenterSettings.appex"),
+            s("Spotlight", "magnifyingglass", .systemGray, "com.apple.preference.spotlight", "SpotlightPreferenceExtension.appex"),
+            s("Printers & Scanners", "printer.fill", .systemGray, "com.apple.preference.printfax", "PrinterScannerSettings.appex"),
+            s("Sharing", "folder.fill", .systemBlue, "com.apple.preferences.sharing", "Sharing.appex"),
+            s("Time Machine", "clock.arrow.circlepath", .systemGreen, "com.apple.prefs.backup", "TimeMachineSettings.appex"),
+            s("Screen Time", "hourglass", .systemIndigo, "com.apple.preference.screentime", "ScreenTimePreferencesExtension.appex"),
+            s("Game Center", "gamecontroller.fill", .systemGreen, "com.apple.Game-Center-Settings.extension", "GameCenterMacOSSettingsExtension.appex"),
+            s("Apple Intelligence & Siri", "sparkles", .systemPurple, "com.apple.Siri-Settings.extension", "SiriPreferenceExtension.appex"),
         ]
     }
 
