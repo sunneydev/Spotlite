@@ -6,7 +6,6 @@ final class ResultRow: NSView {
     private let selectionLayer = CALayer()
     private let iconView = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "")
-    private let enterBadge = NSTextField(labelWithString: "")
     private var isSelected = false
 
     override init(frame frameRect: NSRect) {
@@ -32,13 +31,6 @@ final class ResultRow: NSView {
         titleLabel.maximumNumberOfLines = 1
         addSubview(titleLabel)
 
-        enterBadge.translatesAutoresizingMaskIntoConstraints = false
-        enterBadge.font = .systemFont(ofSize: 11, weight: .semibold)
-        enterBadge.textColor = NSColor.white.withAlphaComponent(0.85)
-        enterBadge.stringValue = "return"
-        enterBadge.alphaValue = 0
-        addSubview(enterBadge)
-
         NSLayoutConstraint.activate([
             iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
             iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -47,10 +39,7 @@ final class ResultRow: NSView {
 
             titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 14),
             titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: enterBadge.leadingAnchor, constant: -10),
-
-            enterBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            enterBadge.centerYAnchor.constraint(equalTo: centerYAnchor),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
         ])
     }
 
@@ -82,11 +71,9 @@ final class ResultRow: NSView {
             selectionLayer.backgroundColor = NSColor.controlAccentColor
                 .withAlphaComponent(0.92).cgColor
             titleLabel.textColor = .white
-            enterBadge.animator().alphaValue = 1
         } else {
             selectionLayer.backgroundColor = NSColor.clear.cgColor
             titleLabel.textColor = .labelColor
-            enterBadge.animator().alphaValue = 0
         }
         CATransaction.commit()
     }

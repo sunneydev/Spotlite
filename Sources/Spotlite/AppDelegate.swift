@@ -69,33 +69,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
     }
 
-    /// Magnifying glass drawn to match the app icon — a clean template image
-    /// that adapts to light/dark menu bars. 18×18, crisp at any scale.
+    /// A soft single sparkle — calm, elegant, and a quiet nod to the name.
+    /// Template image so it adapts to light/dark menu bars.
     private static func menuBarIcon() -> NSImage {
-        let img = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
-            let lineWidth: CGFloat = 1.6
-            let inset = lineWidth / 2 + 0.5
-            NSColor.black.setStroke()
-
-            let diameter = rect.width * 0.62
-            let lens = NSRect(x: inset, y: rect.maxY - diameter - inset,
-                              width: diameter, height: diameter)
-            let ring = NSBezierPath(ovalIn: lens)
-            ring.lineWidth = lineWidth
-            ring.stroke()
-
-            let r = diameter / 2
-            let a: CGFloat = -.pi / 4
-            let start = NSPoint(x: lens.midX + cos(a) * r, y: lens.midY + sin(a) * r)
-            let handle = NSBezierPath()
-            handle.move(to: start)
-            handle.line(to: NSPoint(x: rect.maxX - inset, y: inset))
-            handle.lineWidth = lineWidth + 0.4
-            handle.lineCapStyle = .round
-            handle.stroke()
-            return true
-        }
-        img.isTemplate = true
-        return img
+        let cfg = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+        let img = NSImage(systemSymbolName: "sparkle", accessibilityDescription: "Spotlite")?
+            .withSymbolConfiguration(cfg)
+        img?.isTemplate = true
+        return img ?? NSImage()
     }
 }
