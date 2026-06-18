@@ -15,8 +15,11 @@
 
 ## Install
 
-1. Download [`Spotlite.zip`](Spotlite.zip), unzip, drag into `/Applications`
-2. **Right-click → Open** the first time (signed, not yet notarized)
+1. Download [`Spotlite.dmg`](Spotlite.dmg) and open it
+2. Drag **Spotlite** onto the **Applications** folder
+3. **Right-click → Open** the first time (signed, not yet notarized)
+
+Spotlite launches at login automatically — toggle it off any time from the menu bar icon.
 
 Requires macOS 26 Tahoe. Universal binary, ~200 KB.
 
