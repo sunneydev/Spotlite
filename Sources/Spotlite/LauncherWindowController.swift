@@ -30,6 +30,8 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
     private var dividerView: NSBox!
     private var placeholderLabel: NSTextField!
     private var glassHeightConstraint: NSLayoutConstraint!
+    private let glassView: NSGlassEffectView
+    private let cornerRadius: CGFloat = 30
 
     init(scanner: AppScanner) {
         self.scanner = scanner
@@ -58,6 +60,8 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
         glass.style = .regular
         glass.cornerRadius = 30
         glass.translatesAutoresizingMaskIntoConstraints = false
+        glass.wantsLayer = true
+        self.glassView = glass
 
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -286,6 +290,35 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
         // Reset glass to collapsed height without animation.
         glassHeightConstraint.constant = collapsedHeight
         panel.contentView?.layoutSubtreeIfNeeded()
+        updateGlassShadow(height: collapsedHeight, animated: false)
+    }
+
+    /// NSGlassEffectView clips its rounded shape via masksToBounds, so its
+    /// auto-computed drop shadow is cast from the *rectangular* layer bounds —
+    /// a square halo that's invisible in dark mode but ugly in light mode.
+    /// Give the layer an explicit rounded shadowPath that tracks the bounds.
+    private func updateGlassShadow(height: CGFloat, animated: Bool) {
+        guard let layer = glassView.layer else { return }
+        layer.masksToBounds = false
+        layer.shadowColor = NSColor.black.cgColor
+        layer.shadowOpacity = 0.22
+        layer.shadowRadius = 22
+        layer.shadowOffset = CGSize(width: 0, height: -6)
+        // Build from the target height — during the expand animation glassView's
+        // own bounds haven't updated yet, so reading them would lag the shadow.
+        let rect = CGRect(x: 0, y: 0, width: panelWidth, height: height)
+        let path = CGPath(roundedRect: rect,
+                          cornerWidth: cornerRadius, cornerHeight: cornerRadius,
+                          transform: nil)
+        if animated, let old = layer.shadowPath {
+            let anim = CABasicAnimation(keyPath: "shadowPath")
+            anim.fromValue = old
+            anim.toValue = path
+            anim.duration = 0.42
+            anim.timingFunction = CAMediaTimingFunction(controlPoints: 0.22, 1.0, 0.36, 1.0)
+            layer.add(anim, forKey: "shadowPath")
+        }
+        layer.shadowPath = path
     }
 
     // MARK: - NSWindowDelegate
@@ -319,6 +352,7 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
             rowsContainer.alphaValue = expand ? 1 : 0
             dividerView.alphaValue = expand ? 1 : 0
             panel.contentView?.layoutSubtreeIfNeeded()
+            updateGlassShadow(height: targetHeight, animated: false)
             return
         }
 
@@ -331,6 +365,7 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
             dividerView.animator().alphaValue = expand ? 1 : 0
             panel.contentView?.layoutSubtreeIfNeeded()
         }
+        updateGlassShadow(height: targetHeight, animated: true)
     }
 
     // MARK: - Key handling
