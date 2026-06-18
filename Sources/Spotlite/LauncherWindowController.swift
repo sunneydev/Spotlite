@@ -12,7 +12,7 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
     private var results: [AppEntry] = []
     private var selected: Int = 0
 
-    private let rowHeight: CGFloat = 56
+    private let rowHeight: CGFloat = 48
     private let maxRows: Int = 6
     private let panelWidth: CGFloat = 700
     private let inputHeight: CGFloat = 68

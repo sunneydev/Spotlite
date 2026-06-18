@@ -6,8 +6,8 @@ final class ResultRow: NSView {
     private let selectionLayer = CALayer()
     private let iconView = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "")
-    private let subtitleLabel = NSTextField(labelWithString: "")
-    private let enterBadge = NSTextField(labelWithString: "")
+    private let typeLabel = NSTextField(labelWithString: "Application")
+    private let enterBadge = NSTextField(labelWithString: "↩")
     private var isSelected = false
 
     override init(frame frameRect: NSRect) {
@@ -15,8 +15,9 @@ final class ResultRow: NSView {
         wantsLayer = true
         layerContentsRedrawPolicy = .onSetNeedsDisplay
 
-        // Selection background as a single CALayer — cheap, GPU-only animations.
-        selectionLayer.cornerRadius = 12
+        // Raycast-style selection: a soft, neutral, inset highlight — not a
+        // bold accent fill. A single CALayer keeps it GPU-cheap.
+        selectionLayer.cornerRadius = 10
         selectionLayer.cornerCurve = .continuous
         selectionLayer.backgroundColor = NSColor.clear.cgColor
         layer?.addSublayer(selectionLayer)
@@ -27,42 +28,47 @@ final class ResultRow: NSView {
         addSubview(iconView)
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        titleLabel.font = .systemFont(ofSize: 14, weight: .medium)
         titleLabel.textColor = .labelColor
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.maximumNumberOfLines = 1
         addSubview(titleLabel)
 
-        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        subtitleLabel.font = .systemFont(ofSize: 11, weight: .regular)
-        subtitleLabel.textColor = .secondaryLabelColor
-        subtitleLabel.lineBreakMode = .byTruncatingMiddle
-        subtitleLabel.maximumNumberOfLines = 1
-        addSubview(subtitleLabel)
+        // Right-aligned, dimmed type tag (Raycast shows the kind here).
+        typeLabel.translatesAutoresizingMaskIntoConstraints = false
+        typeLabel.font = .systemFont(ofSize: 12, weight: .regular)
+        typeLabel.textColor = .tertiaryLabelColor
+        typeLabel.maximumNumberOfLines = 1
+        addSubview(typeLabel)
 
+        // ⏎ keycap, only shown on the selected row.
         enterBadge.translatesAutoresizingMaskIntoConstraints = false
-        enterBadge.font = .systemFont(ofSize: 11, weight: .semibold)
-        enterBadge.textColor = NSColor.white.withAlphaComponent(0.85)
-        enterBadge.stringValue = "return"
+        enterBadge.font = .systemFont(ofSize: 12, weight: .semibold)
+        enterBadge.textColor = .secondaryLabelColor
+        enterBadge.alignment = .center
+        enterBadge.wantsLayer = true
+        enterBadge.layer?.cornerRadius = 6
+        enterBadge.layer?.cornerCurve = .continuous
         enterBadge.alphaValue = 0
         addSubview(enterBadge)
 
         NSLayoutConstraint.activate([
-            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 40),
-            iconView.heightAnchor.constraint(equalToConstant: 40),
+            iconView.widthAnchor.constraint(equalToConstant: 32),
+            iconView.heightAnchor.constraint(equalToConstant: 32),
 
             titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 14),
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 10),
-            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: enterBadge.leadingAnchor, constant: -10),
+            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: typeLabel.leadingAnchor, constant: -12),
 
-            subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
-            subtitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: enterBadge.leadingAnchor, constant: -10),
-
-            enterBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            enterBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
             enterBadge.centerYAnchor.constraint(equalTo: centerYAnchor),
+            enterBadge.widthAnchor.constraint(equalToConstant: 24),
+            enterBadge.heightAnchor.constraint(equalToConstant: 22),
+
+            typeLabel.trailingAnchor.constraint(equalTo: enterBadge.leadingAnchor, constant: -10),
+            typeLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }
 
@@ -70,39 +76,51 @@ final class ResultRow: NSView {
 
     override func layout() {
         super.layout()
-        // Inset the selection background slightly from row edges.
-        let inset: CGFloat = 0
-        selectionLayer.frame = bounds.insetBy(dx: inset, dy: 2)
+        // Inset the selection pill from the row edges, Raycast-style.
+        selectionLayer.frame = bounds.insetBy(dx: 8, dy: 3)
     }
 
     override func mouseUp(with event: NSEvent) { onClick?() }
 
-    /// Re-bind this recycled row to a new app entry.
     func bind(_ entry: AppEntry) {
         iconView.image = entry.icon
         titleLabel.stringValue = entry.name
-        subtitleLabel.stringValue = entry.displayPath
     }
 
     func setSelected(_ sel: Bool) {
         guard sel != isSelected else { return }
         isSelected = sel
-        // Short, GPU-driven crossfade. No layout work.
         CATransaction.begin()
         CATransaction.setAnimationDuration(0.09)
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
         if sel {
-            selectionLayer.backgroundColor = NSColor.controlAccentColor
-                .withAlphaComponent(0.92).cgColor
-            titleLabel.textColor = .white
-            subtitleLabel.textColor = NSColor.white.withAlphaComponent(0.78)
+            selectionLayer.backgroundColor = Self.selectionColor(for: effectiveAppearance)
+            enterBadge.layer?.backgroundColor = Self.keycapColor(for: effectiveAppearance)
             enterBadge.animator().alphaValue = 1
         } else {
             selectionLayer.backgroundColor = NSColor.clear.cgColor
-            titleLabel.textColor = .labelColor
-            subtitleLabel.textColor = .secondaryLabelColor
             enterBadge.animator().alphaValue = 0
         }
         CATransaction.commit()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        if isSelected {
+            selectionLayer.backgroundColor = Self.selectionColor(for: effectiveAppearance)
+            enterBadge.layer?.backgroundColor = Self.keycapColor(for: effectiveAppearance)
+        }
+    }
+
+    private static func isDark(_ a: NSAppearance) -> Bool {
+        a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
+    private static func selectionColor(for a: NSAppearance) -> CGColor {
+        (isDark(a) ? NSColor.white.withAlphaComponent(0.10)
+                   : NSColor.black.withAlphaComponent(0.06)).cgColor
+    }
+    private static func keycapColor(for a: NSAppearance) -> CGColor {
+        (isDark(a) ? NSColor.white.withAlphaComponent(0.12)
+                   : NSColor.black.withAlphaComponent(0.07)).cgColor
     }
 }
