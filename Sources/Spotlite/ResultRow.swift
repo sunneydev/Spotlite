@@ -6,7 +6,6 @@ final class ResultRow: NSView {
     private let selectionLayer = CALayer()
     private let iconView = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "")
-    private let subtitleLabel = NSTextField(labelWithString: "")
     private let enterBadge = NSTextField(labelWithString: "")
     private var isSelected = false
 
@@ -33,13 +32,6 @@ final class ResultRow: NSView {
         titleLabel.maximumNumberOfLines = 1
         addSubview(titleLabel)
 
-        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        subtitleLabel.font = .systemFont(ofSize: 11, weight: .regular)
-        subtitleLabel.textColor = .secondaryLabelColor
-        subtitleLabel.lineBreakMode = .byTruncatingMiddle
-        subtitleLabel.maximumNumberOfLines = 1
-        addSubview(subtitleLabel)
-
         enterBadge.translatesAutoresizingMaskIntoConstraints = false
         enterBadge.font = .systemFont(ofSize: 11, weight: .semibold)
         enterBadge.textColor = NSColor.white.withAlphaComponent(0.85)
@@ -54,12 +46,8 @@ final class ResultRow: NSView {
             iconView.heightAnchor.constraint(equalToConstant: 40),
 
             titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 14),
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 10),
+            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
             titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: enterBadge.leadingAnchor, constant: -10),
-
-            subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
-            subtitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: enterBadge.leadingAnchor, constant: -10),
 
             enterBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
             enterBadge.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -81,7 +69,6 @@ final class ResultRow: NSView {
     func bind(_ entry: AppEntry) {
         iconView.image = entry.icon
         titleLabel.stringValue = entry.name
-        subtitleLabel.stringValue = entry.displayPath
     }
 
     func setSelected(_ sel: Bool) {
@@ -95,12 +82,10 @@ final class ResultRow: NSView {
             selectionLayer.backgroundColor = NSColor.controlAccentColor
                 .withAlphaComponent(0.92).cgColor
             titleLabel.textColor = .white
-            subtitleLabel.textColor = NSColor.white.withAlphaComponent(0.78)
             enterBadge.animator().alphaValue = 1
         } else {
             selectionLayer.backgroundColor = NSColor.clear.cgColor
             titleLabel.textColor = .labelColor
-            subtitleLabel.textColor = .secondaryLabelColor
             enterBadge.animator().alphaValue = 0
         }
         CATransaction.commit()

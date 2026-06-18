@@ -4,7 +4,6 @@ final class AppEntry: Hashable {
     let name: String
     let url: URL
     let lowerName: String
-    let displayPath: String
     let icon: NSImage
 
     init(url: URL) {
@@ -12,8 +11,6 @@ final class AppEntry: Hashable {
         let name = url.deletingPathExtension().lastPathComponent
         self.name = name
         self.lowerName = name.lowercased()
-        self.displayPath = url.deletingLastPathComponent().path
-            .replacingOccurrences(of: NSHomeDirectory(), with: "~")
         // Pre-cache the icon — the expensive bit, done once at scan time.
         let icon = NSWorkspace.shared.icon(forFile: url.path)
         icon.size = NSSize(width: 40, height: 40)
