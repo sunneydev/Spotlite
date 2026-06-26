@@ -9,6 +9,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var loginItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Only ever run one Spotlite. If another copy is already running (e.g. an
+        // older version still registered at login, or a duplicate launch after a
+        // restart), the newest launch wins and the stale ones are terminated.
+        guard enforceSingleInstance() else { return }
+
         // Menu bar item — custom magnifying-glass glyph matching the app icon
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = Self.menuBarIcon()
@@ -42,6 +47,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKey.register(keyCode: 49, modifiers: [.command]) { [weak self] in
             self?.toggle()
         }
+    }
+
+    /// Guarantees a single live Spotlite. Returns `true` if this process should keep
+    /// running, `false` if it bowed out to a newer instance (and is terminating).
+    ///
+    /// Tiebreak by launch date, falling back to PID, so the decision is deterministic
+    /// even when two copies launch simultaneously at login — exactly one survives.
+    private func enforceSingleInstance() -> Bool {
+        let me = NSRunningApplication.current
+        let myExec = me.executableURL?.lastPathComponent
+        let others = NSWorkspace.shared.runningApplications.filter { other in
+            guard other.processIdentifier != me.processIdentifier else { return false }
+            // Match siblings by bundle id, and also by executable name so a bare,
+            // un-bundled dev binary (nil bundle id) still counts as a Spotlite.
+            if other.bundleIdentifier == me.bundleIdentifier { return true }
+            return myExec != nil && other.executableURL?.lastPathComponent == myExec
+        }
+        guard !others.isEmpty else { return true }
+
+        let myDate = me.launchDate ?? .distantPast
+        let newerExists = others.contains { other in
+            let otherDate = other.launchDate ?? .distantPast
+            return otherDate > myDate
+                || (otherDate == myDate && other.processIdentifier > me.processIdentifier)
+        }
+        if newerExists {
+            // A newer instance is taking over — defer to it.
+            NSApp.terminate(nil)
+            return false
+        }
+
+        // We're the newest launch: evict the stale ones and carry on.
+        others.forEach { $0.terminate() }
+        return true
     }
 
     @objc private func toggle() {
