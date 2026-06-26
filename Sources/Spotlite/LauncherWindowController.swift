@@ -275,8 +275,13 @@ final class LauncherWindowController: NSObject, NSTextFieldDelegate, NSWindowDel
         rowsContainer.alphaValue = 0
         dividerView.alphaValue = 0
         isExpanded = false
+        // Do NOT call NSApp.activate here. Activating the app forces a Space
+        // switch when another app is frontmost in fullscreen — macOS would
+        // animate out of the fullscreen Space to show ours, so the overlay
+        // never lands on top. A .nonactivatingPanel becomes key and takes
+        // keyboard input on its own (the app is an accessory), which lets it
+        // float over fullscreen apps via .canJoinAllSpaces + .fullScreenAuxiliary.
         panel.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
         panel.makeFirstResponder(searchField)
     }
 

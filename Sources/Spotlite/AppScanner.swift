@@ -82,17 +82,39 @@ final class AppScanner {
         let fm = FileManager.default
         var seen = Set<String>()
         var found: [AppEntry] = []
+
+        func add(_ url: URL) {
+            let key = url.deletingPathExtension().lastPathComponent.lowercased()
+            if seen.insert(key).inserted {
+                found.append(AppEntry(url: url))
+            }
+        }
+
         for root in roots {
-            guard let enumerator = fm.enumerator(at: root,
-                                                 includingPropertiesForKeys: [.isDirectoryKey],
-                                                 options: [.skipsHiddenFiles]) else { continue }
-            for case let url as URL in enumerator {
-                if url.pathExtension == "app" {
-                    let key = url.deletingPathExtension().lastPathComponent.lowercased()
-                    if seen.insert(key).inserted {
-                        found.append(AppEntry(url: url))
+            // Deep scan for nested .app bundles. Note: enumerator(at:) silently
+            // skips symlinks, so this misses symlinked apps (e.g. Safari, which
+            // ships as /Applications/Safari.app -> /System/Cryptexes/...).
+            if let enumerator = fm.enumerator(at: root,
+                                              includingPropertiesForKeys: [.isDirectoryKey],
+                                              options: [.skipsHiddenFiles]) {
+                for case let url as URL in enumerator {
+                    if url.pathExtension == "app" {
+                        add(url)
+                        enumerator.skipDescendants()
                     }
-                    enumerator.skipDescendants()
+                }
+            }
+
+            // Second pass over the root's direct children: contentsOfDirectory(at:)
+            // *does* include symlinks, so this catches symlinked .app bundles the
+            // enumerator above skipped.
+            // No .skipsHiddenFiles here: it resolves symlinks and treats the
+            // cryptex-backed target as hidden, which would drop Safari again.
+            if let items = try? fm.contentsOfDirectory(at: root,
+                                                       includingPropertiesForKeys: nil,
+                                                       options: []) {
+                for url in items where url.pathExtension == "app" {
+                    add(url)
                 }
             }
         }
